@@ -1,0 +1,71 @@
+# ansible-playbook -i ~/ansible/hosts /playbooks/new-default.yml
+---
+- hosts: raspberry_pis
+  gather_facts: yes
+  vars:
+    #wifi_country:
+    raspberry_pi_boot_config_options:
+      # Set the GPU memory split value.
+      #- regexp: "^#?gpu_mem"
+      #  line: "gpu_mem=16"
+      # Enable 1200ma USB current on newer model Pis.
+      #- regexp: "^#?max_usb_current"
+      #  line: "max_usb_current=1"
+
+    raspberry_pi_rc_local_options:
+      # Disable HDMI on startup (for power savings).
+      #- regexp: "^/usr/bin/tvservice"
+      #  line: "/usr/bin/tvservice -o"
+    
+  vars_prompt:
+
+  - name: hostname
+    prompt: "please enter a hostname for your new device:"
+    private: no
+  # - name: wifi_ssid
+  #   prompt: "please enter the WiFi SSID for your new device:"
+  #   private: no
+  # - name: wifi_password
+  #   prompt: "please enter the WiFi password for your new device:"
+  #   private: yes
+  - name: ssh_key
+    prompt: "please enter an (optional) SSH Key for your new device:"
+    private: yes
+
+  tasks:
+
+    # Expand the filesystem
+    - include: ../tasks/expand-filesystem.yml
+      tags: setup
+
+    # Set WiFi Options
+    #- include: ../tasks/wifi.yml
+    #  tags: setup
+
+    - name: Create SSH folder
+      file: path=~/.ssh state=directory
+
+    - name: Set up SSH Key from a template
+      template: src=../templates/authorized_keys.j2 dest=~/.ssh/authorized_keys
+
+    - name: run 'dpkg --configure -a'
+      become: yes
+      command: dpkg --configure -a
+
+    # Run apt-get update and apt-get upgrade 
+    - include: ../tasks/update.yml
+      tags: update
+
+    # Set the hostname
+    - include: ../tasks/hostname.yml
+      tags: setup
+
+  handlers:
+
+    - include: ../handlers/reboot.yml
+      tags: system
+
+    - include: ../handlers/tzdata.yml
+      tags: system
+
+  

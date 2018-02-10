@@ -1,0 +1,116 @@
+# ansible-playbook -v -i ./hosts ./playbooks/setup-camera-mjpg-stream.yml
+---
+- hosts: raspberry_pis
+  gather_facts: yes
+  vars:
+
+    ##
+    ## These settings will be added to /boot/config.txt
+    raspberry_pi_boot_config_options:
+      # Set the GPU memory split value.
+      - regexp: "^#?gpu_mem"
+        line: "gpu_mem=128"
+
+      # Enable 1200ma USB current on newer model Pis.
+      - regexp: "^#?max_usb_current"
+        line: "max_usb_current=1"
+
+      # Enable Camera
+      - regexp: "^#?start_x"
+        line: "start_x=1"
+
+      # Disable Camera LED 1 is disabled, 0 is enabled
+      - regexp: "^#?disable_camera_led"
+        line: "disable_camera_led=1"
+
+    ##
+    ## These setting will get added to /etc/rc.local
+    raspberry_pi_rc_local_options:
+      # Disable HDMI on startup (for power savings).
+      - regexp: "^/usr/bin/tvservice"
+        line: "/usr/bin/tvservice -o"
+
+    mjpg:
+      port: 1180
+      fps: 15
+      quality: 50
+      width: 800
+      height: 600
+      rot: 0
+      
+
+
+  roles:
+    - { role: geerlingguy.raspberry-pi, become: true }
+  
+  tasks:
+
+    # - name: Check that the mjpg-streamer.sh exists
+    #   stat:
+    #     path: /home/pi/mjpg-streamer.sh
+    #   register: stat_result
+
+    # - name: Stopping existing mjpg-streamer service
+    #   command: "/home/pi/mjpg-streamer.sh stop"
+    #   when: stat_result.stat.exists == True
+
+    # Run apt-get update and apt-get upgrade 
+    - include: ../tasks/update.yml
+      tags: update
+
+    - name: Install dependancies from apt
+      become: yes
+      apt: name={{item}} state=installed
+      with_items:
+        - build-essential
+        - cmake
+        - git
+        - libjpeg8-dev 
+        - libc6-dev
+        - zlib1g-dev
+        - libpq5 
+        - libpq-dev 
+
+
+    - name: Get mjpg-streamer from github
+      git:
+        repo: https://github.com/jacksonliam/mjpg-streamer.git
+        dest: /home/pi/mjpg-streamer
+    
+    - name: Build mjpg-streamer
+      command: make
+      args:
+        chdir: /home/pi/mjpg-streamer/mjpg-streamer-experimental
+
+    - name: Install mjpg-streamer
+      become: true
+      command: make install
+      args:
+        chdir: /home/pi/mjpg-streamer/mjpg-streamer-experimental
+
+    - name: Template over sh service file
+      template:
+        src: ../templates/mjpg-streamer.j2
+        dest: /home/pi/mjpg-streamer.sh
+        owner: pi
+        group: pi
+        mode: 0755
+      
+
+    - name: Set mjpg-streamer service to autostart
+      become: true
+      cron:
+        name: "mjpg-streamer service"
+        special_time: reboot
+        job: "/home/pi/mjpg-streamer.sh start"
+
+    - name: Start mjpg-streamer service
+      command: "/home/pi/mjpg-streamer.sh start"
+
+  
+  handlers:
+
+    - include: ../handlers/reboot.yml
+      tags: system
+
+  
