@@ -103,9 +103,11 @@
         name: "mjpg-streamer service"
         special_time: reboot
         job: "/home/pi/mjpg-streamer.sh start"
+    
+    - debug: msg="See you soon at http://{{ inventory_hostname }}:1180/?action=stream"
+      notify: reboot
+      changed_when: true
 
-    - name: Start mjpg-streamer service
-      command: "/home/pi/mjpg-streamer.sh start"
 
   
   handlers:

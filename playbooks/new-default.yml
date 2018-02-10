@@ -52,6 +52,25 @@
       become: yes
       command: dpkg --configure -a
 
+
+    - name: Purging bulky packages
+      become: yes
+      apt:
+        pkg={{ item }} 
+        state=absent
+        purge=yes
+        force=yes
+      with_items:
+        - libreoffice
+        - wolfram-engine
+        - sonic-pi
+        - scratch
+
+    # - name: Clean up from the purge
+    #   apt:
+    #     autoremove: yes
+    #     purge: yes
+
     # Run apt-get update and apt-get upgrade 
     - include: ../tasks/update.yml
       tags: update
@@ -63,9 +82,6 @@
   handlers:
 
     - include: ../handlers/reboot.yml
-      tags: system
-
-    - include: ../handlers/tzdata.yml
       tags: system
 
   

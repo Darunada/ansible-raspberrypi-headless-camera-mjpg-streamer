@@ -1,6 +1,6 @@
 - name: reboot
-  command: shutdown -r +0 'Ansible Reboot triggered' && sleep 1
-  async: 1
+  command: shutdown -r +1 'Ansible Reboot triggered' && sleep 10
+  async: 0
   poll: 0
   ignore_errors: true
   become: true

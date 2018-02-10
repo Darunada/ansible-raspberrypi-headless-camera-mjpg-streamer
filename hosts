@@ -1,7 +1,7 @@
 [raspberry_pis]
-192.168.1.8 ansible_user=pi ansible_pass=hhsrobotics
+10.42.0.25 ansible_user=pi ansible_ssh_pass=raspberry
 
 [all:vars]
 ansible_connection=ssh
 ansible_user=ansible
-ansible_pass=hhsrobotics
+ansible_pass=raspberry
